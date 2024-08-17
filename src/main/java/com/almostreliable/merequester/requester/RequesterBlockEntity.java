@@ -179,29 +179,24 @@ public class RequesterBlockEntity extends AENetworkBlockEntity implements Reques
         var tickRateModulation = TickRateModulation.IDLE;
         for (var i = 0; i < requestStatus.length; i++) {
             var state = requestStatus[i];
-            var result = handleRequest(i);
-            if (!Objects.equals(state, result)) {
+
+            // if we change multiple states per tick then the client will never see us in "missing ingredients"
+            // we can either special case that state, or only transition once per tick, and once-per-tick is
+            // significantly less code :)
+            var nextState = state.handle(this, i);
+
+            if (state.type().translateToClient() != nextState.type().translateToClient()) {
                 changed = true;
             }
-            var resultTickRateModulation = result.getTickRateModulation();
+            var resultTickRateModulation = nextState.getTickRateModulation();
             if (resultTickRateModulation.ordinal() > tickRateModulation.ordinal()) {
                 tickRateModulation = resultTickRateModulation;
             }
 
-            updateRequestStatus(i, result);
+            updateRequestStatus(i, nextState);
         }
         currentTickRate = tickRateModulation;
         return changed;
-    }
-
-    private StatusState handleRequest(int slot) {
-        var state = requestStatus[slot];
-        updateRequestStatus(slot, state.handle(this, slot));
-        if (requestStatus[slot].type() != RequestStatus.IDLE && !Objects.equals(requestStatus[slot], state)) {
-            return handleRequest(slot);
-        }
-
-        return requestStatus[slot];
     }
 
     private void updateRequestStatus(int slot, StatusState state) {

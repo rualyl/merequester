@@ -1,5 +1,6 @@
 package com.almostreliable.merequester.requester.status;
 
+import appeng.api.networking.crafting.CalculationStrategy;
 import appeng.api.networking.crafting.CraftingSubmitErrorCode;
 import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.networking.ticking.TickRateModulation;
@@ -11,10 +12,31 @@ import java.util.concurrent.Future;
 
 public final class PlanState implements StatusState {
 
+    private final boolean wasMissing;
     private final Future<? extends ICraftingPlan> future;
 
-    PlanState(Future<? extends ICraftingPlan> future) {
+    PlanState(boolean wasMissing, Future<? extends ICraftingPlan> future) {
+        this.wasMissing = wasMissing;
         this.future = future;
+    }
+
+    static PlanState BuildPlan(RequesterBlockEntity host, int slot, boolean wasMissing)
+    {
+        // Once BuildPlan is invoked, we're crafting no matter what, rather than returning a null PlanState
+        var amountToCraft = Math.max(1, host.getStorageManager().computeAmountToCraft(slot));
+        var key = host.getRequests().getKey(slot);
+
+        var future = host.getMainNodeGrid()
+            .getCraftingService()
+            .beginCraftingCalculation(
+                host.getLevel(),
+                host::getActionSource,
+                key,
+                amountToCraft,
+                CalculationStrategy.CRAFT_LESS
+            );
+
+        return new PlanState(wasMissing, future);
     }
 
     @Override
@@ -45,7 +67,7 @@ public final class PlanState implements StatusState {
 
     @Override
     public RequestStatus type() {
-        return RequestStatus.PLAN;
+        return wasMissing ? RequestStatus.MISSING : RequestStatus.PLAN;
     }
 
     @Override
