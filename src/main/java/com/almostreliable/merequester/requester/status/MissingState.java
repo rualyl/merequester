@@ -3,11 +3,7 @@ package com.almostreliable.merequester.requester.status;
 import appeng.api.networking.ticking.TickRateModulation;
 import com.almostreliable.merequester.requester.RequesterBlockEntity;
 
-import javax.annotation.Nullable;
-
 public class MissingState implements StatusState {
-
-    @Nullable private PlanState simulatedPlanState;
 
     MissingState() {}
 
